@@ -1,0 +1,160 @@
+v18.19.1
+--- npm ci ---
+
+added 52 packages, and audited 53 packages in 2s
+
+15 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+--- tsc --noEmit ---
+(exit 0)
+--- npm test ---
+
+> cronscape@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /work/code
+
+stdout | test/parse.test.ts > parseCrontab: single-line field sets > parses a step expression across every field
+{
+  "lines": [
+    {
+      "line": 1,
+      "raw": "*/15 * * * * echo tick",
+      "fields": {
+        "minute": [
+          0,
+          15,
+          30,
+          45
+        ],
+        "hour": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "dayOfMonth": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "month": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "dayOfWeek": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      },
+      "command": "echo tick"
+    }
+  ],
+  "errors": []
+}
+line 1: echo tick
+
+stdout | test/parse.test.ts > parseCrontab: a file mixing valid and malformed lines > attributes each error to its real line number in the fixture
+line 9, col 1: dayOfMonth field: value 32 out of range 1-31 in "32"
+line 10, col 1: minute field: step must be a positive integer, got "0" in "*/0"
+line 11, col 1: 7-field Quartz-style cron expressions are not supported; this parser only accepts standard 5-field crontab lines
+
+ ✓ test/parse.test.ts (14 tests) 20ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  23:05:07
+   Duration  688ms (transform 212ms, setup 0ms, collect 210ms, tests 20ms, environment 0ms, prepare 143ms)
+
+--- npm run build ---
+
+> cronscape@0.0.0 build
+> tsc && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 4 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                 0.39 kB │ gzip: 0.26 kB
+dist/assets/index-BmeGit54.css  1.20 kB │ gzip: 0.62 kB
+dist/assets/index-B5ujYmCY.js   0.85 kB │ gzip: 0.49 kB
+✓ built in 177ms
+--- ls dist ---
+total 16
+drwxr-xr-x 3 dev dev 4096 Sep 18 23:05 .
+drwxr-xr-x 8 dev dev 4096 Sep 18 23:05 ..
+drwxr-xr-x 2 dev dev 4096 Sep 18 23:05 assets
+-rw-r--r-- 1 dev dev  393 Sep 18 23:05 index.html
