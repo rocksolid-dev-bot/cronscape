@@ -1,0 +1,11 @@
+# comment line, ignored
+CRON_TZ=Europe/Berlin
+
+*/15 * * * * echo tick
+0 0 13 * 5 echo friday13
+30 2 * * * echo nightly
+0 9-17/2 * * MON-FRI echo business
+
+0 0 32 * * echo badday
+*/0 * * * * echo badstep
+0 0 * * * * * echo quartz
