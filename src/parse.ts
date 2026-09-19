@@ -11,6 +11,17 @@ export interface CronFields {
   dayOfMonth: number[]
   month: number[]
   dayOfWeek: number[]
+  /**
+   * True only when the source token for `dayOfMonth` was the literal `*`.
+   * An explicit full enumeration (`1-31`) is not the same thing — cron's
+   * dom/dow OR rule (occurrences.ts) keys off whether the field was
+   * *written* unrestricted, not off whether it happens to resolve to every
+   * value, so this is captured here at parse time rather than reconstructed
+   * later from the resolved set.
+   */
+  dayOfMonthIsWildcard: boolean
+  /** Same rule as `dayOfMonthIsWildcard`, for the `dayOfWeek` field. */
+  dayOfWeekIsWildcard: boolean
 }
 
 export interface CronLine {
@@ -233,6 +244,8 @@ function parseFiveFieldLine(
     } else {
       fields[name] = result.values
     }
+    if (name === 'dayOfMonth') fields.dayOfMonthIsWildcard = fieldTokens[i] === '*'
+    if (name === 'dayOfWeek') fields.dayOfWeekIsWildcard = fieldTokens[i] === '*'
   }
   return {
     line: lineNo,
