@@ -52,6 +52,11 @@ const EXPRESSIONS = [
   '0 0 * * 7',
   '*/7 3 * * *',
   '0 9-17/2 * * MON-FRI',
+  // Widened after all three items landed early (TODAY.md "Not today"):
+  // more expressions the day's own fixture table didn't try.
+  '@weekly',
+  '5 4 * * SUN',
+  '0 0 1-7 * 1',
 ]
 
 // A DST-free stretch (January 2026, both in UTC and Europe/Berlin) so a
@@ -69,6 +74,36 @@ describe('generateOccurrences vs cron-parser: differential oracle', () => {
       })
     }
   }
+})
+
+describe('generateOccurrences vs cron-parser: a genuine disagreement, kept not deleted', () => {
+  it('MON-SUN wrap-around: ours parses it, cron-parser rejects it as an inverted range', () => {
+    // TODAY.md's own domain reading (and Vixie/POSIX cron) treat MON-SUN as
+    // wrap-around for "every day", not an inverted range — ours handles it.
+    // cron-parser 5.10.1 does not: it throws "Invalid range: 1-0, min(1) >
+    // max(0)", reading it the way plain numeric range validation would.
+    // Ours is right per the format's own semantics; the disagreement is
+    // recorded here rather than silently dropping the case from the suite.
+    const mine = ours(
+      '0 0 * * MON-SUN',
+      new Date('2026-01-01T00:00:00Z'),
+      new Date('2026-01-08T00:00:00Z'),
+      'UTC',
+    )
+    expect(mine).toEqual([
+      '2026-01-01T00:00:00.000Z',
+      '2026-01-02T00:00:00.000Z',
+      '2026-01-03T00:00:00.000Z',
+      '2026-01-04T00:00:00.000Z',
+      '2026-01-05T00:00:00.000Z',
+      '2026-01-06T00:00:00.000Z',
+      '2026-01-07T00:00:00.000Z',
+      '2026-01-08T00:00:00.000Z',
+    ])
+    expect(() =>
+      oracle('0 0 * * MON-SUN', new Date('2026-01-01T00:00:00Z'), new Date('2026-01-08T00:00:00Z'), 'UTC'),
+    ).toThrow(/Invalid range/)
+  })
 })
 
 describe('generateOccurrences: exploratory DST print (recorded, not asserted)', () => {
