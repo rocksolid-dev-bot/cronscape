@@ -5,3 +5,14 @@ npm test: 15 passed (was 14 on day 1, +1 for the 0/7-equality test)
 
 --- item 2: MON-SUN wrap-around, cardinality assertions, 8 still errors ---
 npm test: 21 passed
+
+--- item 3: exploratory DST print (recorded, not asserted; day 3 input) ---
+ours   spring-forward 2026-03-29 (Europe/Berlin): ["2026-03-29T01:30:00.000Z"]
+ours   fall-back      2026-10-25 (Europe/Berlin): ["2026-10-25T01:30:00.000Z"]
+oracle spring-forward 2026-03-29 (Europe/Berlin): ["2026-03-29T01:30:00.000Z"]
+oracle fall-back      2026-10-25 (Europe/Berlin): ["2026-10-25T00:30:00.000Z"]
+Disagreement noted, not fixed: on fall-back our generator and the oracle
+both find exactly one 02:30 CET/CEST occurrence but at different UTC
+instants for the repeated hour. Which one (or both) is "right" is day 3's
+DST-classification question; today's generator correctly does not label
+either as skipped/repeated.
