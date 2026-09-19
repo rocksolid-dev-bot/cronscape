@@ -46,7 +46,12 @@ describe('parseCrontab: single-line field sets', () => {
     ])
     expect(line.fields.dayOfMonth).toEqual(Array.from({ length: 31 }, (_, i) => i + 1))
     expect(line.fields.month).toEqual(Array.from({ length: 12 }, (_, i) => i + 1))
-    expect(line.fields.dayOfWeek).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+    // `dayOfWeek` normalises `7` to `0` as the last step of parsing that
+    // field only, so `*` is 7 distinct weekdays, not 8 — the length is
+    // asserted separately from the members so a future duplicate fails on
+    // cardinality alone, not just on which numbers happen to be present.
+    expect(line.fields.dayOfWeek).toHaveLength(7)
+    expect(line.fields.dayOfWeek).toEqual([0, 1, 2, 3, 4, 5, 6])
     expect(line.command).toBe('echo tick')
   })
 
@@ -84,8 +89,16 @@ describe('parseCrontab: single-line field sets', () => {
     expect(line.fields.hour).toEqual([0])
     expect(line.fields.dayOfMonth).toEqual(Array.from({ length: 31 }, (_, i) => i + 1))
     expect(line.fields.month).toEqual(Array.from({ length: 12 }, (_, i) => i + 1))
-    expect(line.fields.dayOfWeek).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+    expect(line.fields.dayOfWeek).toHaveLength(7)
+    expect(line.fields.dayOfWeek).toEqual([0, 1, 2, 3, 4, 5, 6])
     expect(line.command).toBe('echo backup')
+  })
+
+  it('normalises dayOfWeek 7 to 0, so `0` and `7` mean the same Sunday', () => {
+    const zero = parseCrontab('0 0 * * 0 echo sun0')
+    const seven = parseCrontab('0 0 * * 7 echo sun7')
+    expect(zero.lines[0].fields.dayOfWeek).toEqual(seven.lines[0].fields.dayOfWeek)
+    expect(zero.lines[0].fields.dayOfWeek).toEqual([0])
   })
 
   it('reads a CRON_TZ assignment as the file timezone, not a schedule line', () => {

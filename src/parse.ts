@@ -208,7 +208,18 @@ function parseFiveFieldLine(
     if ('error' in result) {
       return { line: lineNo, column, message: `${name} field: ${result.error}` }
     }
-    fields[name] = result.values
+    // dayOfWeek only: `7` is legal input (POSIX/Vixie both accept it as a
+    // second name for Sunday) but is the same real day as `0`, so it is
+    // normalised to `0` here, as the last step of parsing this field only,
+    // then the set is re-deduplicated and re-sorted. `max: 7` stays in
+    // FIELD_SPECS so `7` stays legal input and `8` still errors as out of
+    // range against `0-7`.
+    if (name === 'dayOfWeek') {
+      const normalised = new Set(result.values.map((v) => (v === 7 ? 0 : v)))
+      fields[name] = [...normalised].sort((a, b) => a - b)
+    } else {
+      fields[name] = result.values
+    }
   }
   return {
     line: lineNo,
