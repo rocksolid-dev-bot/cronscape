@@ -1,0 +1,7 @@
+cronscape — day 2 capture (2026-09-19, 17:00 Berlin cycle)
+
+--- item 1: dayOfWeek 7->0 normalisation ---
+npm test: 15 passed (was 14 on day 1, +1 for the 0/7-equality test)
+
+--- item 2: MON-SUN wrap-around, cardinality assertions, 8 still errors ---
+npm test: 21 passed

@@ -86,7 +86,11 @@ function resolveValue(token: string, spec: FieldSpec): number | null {
 }
 
 /** Parses one comma-separated field (e.g. `9-17/2` or `MON-FRI` or `*`). */
-function parseField(text: string, spec: FieldSpec): { values: number[] } | { error: string } {
+function parseField(
+  text: string,
+  spec: FieldSpec,
+  isDayOfWeek = false,
+): { values: number[] } | { error: string } {
   const out = new Set<number>()
   for (const part of text.split(',')) {
     if (part.length === 0) return { error: `empty item in "${text}"` }
@@ -127,7 +131,16 @@ function parseField(text: string, spec: FieldSpec): { values: number[] } | { err
     if (hi < spec.min || hi > spec.max) {
       return { error: `value ${hi} out of range ${spec.min}-${spec.max} in "${part}"` }
     }
-    if (hi < lo) return { error: `range end before start in "${part}"` }
+    if (hi < lo) {
+      // `MON-SUN` (1..0) and `FRI-MON` (5..1) are the wrap-around way of
+      // writing "every day" / "Friday through Monday", not an inverted
+      // range: dayOfWeek only, continue from lo through the real end of
+      // the week (6, Saturday) and pick up again at 0 (Sunday) through hi.
+      if (!isDayOfWeek) return { error: `range end before start in "${part}"` }
+      for (let v = lo; v <= 6; v += step) out.add(v)
+      for (let v = 0; v <= hi; v += step) out.add(v)
+      continue
+    }
 
     for (let v = lo; v <= hi; v += step) out.add(v)
   }
@@ -204,7 +217,7 @@ function parseFiveFieldLine(
   const fields: Partial<CronFields> = {}
   for (let i = 0; i < FIELD_ORDER.length; i++) {
     const name = FIELD_ORDER[i]
-    const result = parseField(fieldTokens[i], FIELD_SPECS[name])
+    const result = parseField(fieldTokens[i], FIELD_SPECS[name], name === 'dayOfWeek')
     if ('error' in result) {
       return { line: lineNo, column, message: `${name} field: ${result.error}` }
     }

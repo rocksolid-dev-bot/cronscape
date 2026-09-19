@@ -101,6 +101,54 @@ describe('parseCrontab: single-line field sets', () => {
     expect(zero.lines[0].fields.dayOfWeek).toEqual([0])
   })
 
+  it('agrees on Sunday across the numeral, the alias, and the name', () => {
+    const zero = parseCrontab('0 0 * * 0 echo a')
+    const seven = parseCrontab('0 0 * * 7 echo b')
+    const named = parseCrontab('0 0 * * SUN echo c')
+    expect(zero.lines[0].fields.dayOfWeek).toEqual(seven.lines[0].fields.dayOfWeek)
+    expect(seven.lines[0].fields.dayOfWeek).toEqual(named.lines[0].fields.dayOfWeek)
+  })
+
+  it('treats MON-SUN as wrap-around for "every day", not an inverted range', () => {
+    const wrap = parseCrontab('0 0 * * MON-SUN echo everyday')
+    const star = parseCrontab('0 0 * * * echo everyday')
+    expect(wrap.errors).toEqual([])
+    expect(wrap.lines[0].fields.dayOfWeek).toHaveLength(7)
+    expect(wrap.lines[0].fields.dayOfWeek).toEqual(star.lines[0].fields.dayOfWeek)
+  })
+
+  it('leaves SUN-SAT unchanged at length 7 (already a forward range)', () => {
+    const result = parseCrontab('0 0 * * SUN-SAT echo everyday')
+    expect(result.errors).toEqual([])
+    expect(result.lines[0].fields.dayOfWeek).toHaveLength(7)
+    expect(result.lines[0].fields.dayOfWeek).toEqual([0, 1, 2, 3, 4, 5, 6])
+  })
+
+  it('wraps FRI-MON through the weekend into next week', () => {
+    const result = parseCrontab('0 0 * * FRI-MON echo weekend')
+    expect(result.errors).toEqual([])
+    expect(result.lines[0].fields.dayOfWeek).toEqual([0, 1, 5, 6])
+  })
+
+  it('still errors on dayOfWeek 8, naming the range 0-7 with a numeric line', () => {
+    const result = parseCrontab('0 0 * * 8 echo baddow')
+    expect(result.lines).toHaveLength(0)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0].message).toMatch(/out of range/)
+    expect(result.errors[0].message).toMatch(/0-7/)
+    expect(typeof result.errors[0].line).toBe('number')
+  })
+
+  it('pins every field\'s `*` expansion by cardinality, not just its members', () => {
+    const result = parseCrontab('* * * * * echo everything')
+    const [line] = result.lines
+    expect(line.fields.minute).toHaveLength(60)
+    expect(line.fields.hour).toHaveLength(24)
+    expect(line.fields.dayOfMonth).toHaveLength(31)
+    expect(line.fields.month).toHaveLength(12)
+    expect(line.fields.dayOfWeek).toHaveLength(7)
+  })
+
   it('reads a CRON_TZ assignment as the file timezone, not a schedule line', () => {
     const result = parseCrontab('CRON_TZ=Europe/Berlin\n0 3 * * * echo tz')
     expect(result.timezone).toBe('Europe/Berlin')
