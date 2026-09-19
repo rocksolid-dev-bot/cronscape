@@ -16,3 +16,13 @@ both find exactly one 02:30 CET/CEST occurrence but at different UTC
 instants for the repeated hour. Which one (or both) is "right" is day 3's
 DST-classification question; today's generator correctly does not label
 either as skipped/repeated.
+
+--- close-out ---
+node -v: v18.19.1
+npm ci: clean, 55 packages audited (2 moderate vitest/@vitest/mocker advisories,
+  pre-existing from day 1's vitest pin, not introduced this cycle)
+npx tsc --noEmit: exit 0, no output
+npm test: 45 passed (3 files) — parse.test.ts 21, occurrences.test.ts 7,
+  differential.test.ts 17
+npm run build: exit 0
+ls dist/: index.html, assets/ (index-BmeGit54.css, index-B5ujYmCY.js)
