@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseCrontab } from '../src/parse.ts'
 import type { CronFields } from '../src/parse.ts'
 import { generateOccurrences } from '../src/occurrences.ts'
-import type { GenerateResult } from '../src/occurrences.ts'
+import type { GenerateResult, Occurrence } from '../src/occurrences.ts'
 
 const UTC = 'UTC'
 
@@ -89,5 +89,38 @@ describe('generateOccurrences: bounds', () => {
       '2026-01-01T00:30:00.000Z',
       '2026-01-01T00:45:00.000Z',
     ])
+  })
+})
+
+describe('generateOccurrences: DST — skipped/repeated firings, no invented instant', () => {
+  const onlyOn = (result: GenerateResult, isoDatePrefix: string): Occurrence[] =>
+    result.occurrences.filter((o) => (o.instant ?? `${o.wallClock}:00Z`).startsWith(isoDatePrefix))
+
+  it('30 2 * * * on spring-forward day (Europe/Berlin, 2026-03-29): no valid instant', () => {
+    const result = run('30 2 * * *', '2026-03-28T00:00:00Z', '2026-03-30T00:00:00Z', 'Europe/Berlin')
+    const onThatDay = onlyOn(result, '2026-03-29')
+    console.log(JSON.stringify(onThatDay, null, 2))
+    expect(onThatDay).toHaveLength(1)
+    expect(onThatDay[0].kind).toBe('skipped')
+    expect(onThatDay[0].instant).toBe(null)
+    const instantsOnThatDay = result.instants.filter((i) => i.startsWith('2026-03-29'))
+    expect(instantsOnThatDay.length).toBe(0)
+  })
+
+  it('30 2 * * * on fall-back day (Europe/Berlin, 2026-10-25): two repeated instants', () => {
+    const result = run('30 2 * * *', '2026-10-24T00:00:00Z', '2026-10-26T00:00:00Z', 'Europe/Berlin')
+    const onThatDay = onlyOn(result, '2026-10-25')
+    console.log(JSON.stringify(onThatDay, null, 2))
+    expect(onThatDay).toHaveLength(2)
+    expect(onThatDay[0].kind).toBe('repeated')
+    expect(onThatDay[1].kind).toBe('repeated')
+    expect(onThatDay.map((o) => o.instant)).toEqual(['2026-10-25T00:30:00.000Z', '2026-10-25T01:30:00.000Z'])
+  })
+
+  it('30 2 * * * on an ordinary day in the same window: one normal instant', () => {
+    const result = run('30 2 * * *', '2026-10-24T00:00:00Z', '2026-10-26T00:00:00Z', 'Europe/Berlin')
+    const onThatDay = onlyOn(result, '2026-10-24')
+    expect(onThatDay).toHaveLength(1)
+    expect(onThatDay[0].kind).toBe('normal')
   })
 })
