@@ -1,0 +1,72 @@
+=== node -v ===
+v18.19.1
+
+=== npm ci (tail) ===
+npm WARN EBADENGINE   required: { node: '>=20.0.0' },
+npm WARN EBADENGINE   current: { node: 'v18.19.1', npm: '9.2.0' }
+npm WARN EBADENGINE }
+
+added 63 packages, and audited 64 packages in 4s
+
+16 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+=== npx tsc --noEmit ===
+exit=0
+
+=== npm test (summary) ===
+
+stdout | test/dst.test.ts > resolveWallClock: zones with no hour-sized or no DST transition at all > Asia/Kolkata has no DST at all: always normal, length 1
+Asia/Kolkata 2026-10-25 02:30: { kind: [32m'normal'[39m, instants: [ [32m'2026-10-24T21:00:00.000Z'[39m ] }
+
+ ✓ test/dst.test.ts (9 tests) 40ms
+ ✓ test/ui.test.ts (5 tests) 77ms
+
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+   Start at  15:24:19
+   Duration  4.79s (transform 378ms, setup 0ms, collect 506ms, tests 1.71s, environment 516ms, prepare 535ms)
+
+
+=== npm run build ===
+
+> cronscape@0.0.0 build
+> tsc && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 8 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.39 kB │ gzip: 0.26 kB
+dist/assets/index--wRNWhqb.css   3.47 kB │ gzip: 1.11 kB
+dist/assets/index-C-FsPHBa.js   12.26 kB │ gzip: 4.77 kB
+✓ built in 285ms
+exit=0
+
+=== ls dist/ ===
+assets
+index.html
+
+=== grep: green only non-text declarations ===
+3: * conflict (see the skill's own Provenance block): its primary #37F712 on
+15:  --primary: #37f712; /* borders / outlines / backgrounds only, never text */
+
+=== grep: no CDN ===
+(exit above: nonzero = no matches, which is correct)
+
+=== screenshot attempt ===
+Container has no browser and no Playwright cache (checked: no chromium/chromium-browser/google-chrome on PATH, ~/.cache/ms-playwright absent).
+Tried: npm i -D playwright-chromium (Apache-2.0) as the container user (dev).
+Result: FAILED. Install script (install.js) exits with code 1:
+  npm ERR! You are running Node.js 18.19.1.
+  npm ERR! Playwright requires Node.js 20 or higher.
+No fallback attempted per TODAY.md: no apt, no sudo, no host installs. package.json/package-lock.json unaffected (install failed before writing them).
+Screenshot moves to day 5.
