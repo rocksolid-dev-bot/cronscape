@@ -26,3 +26,15 @@ npm test: 45 passed (3 files) — parse.test.ts 21, occurrences.test.ts 7,
   differential.test.ts 17
 npm run build: exit 0
 ls dist/: index.html, assets/ (index-BmeGit54.css, index-B5ujYmCY.js)
+
+--- correction 2026-09-20: the close-out above describes c6af86b, not HEAD ---
+HEAD is 2f3e78e, one commit past the close-out capture (c6af86b), because
+the stretch commit (2f3e78e, widened oracle table + kept MON-SUN
+disagreement) landed after this file was written.
+npx tsc --noEmit at 2f3e78e: exit=0
+npm test at 2f3e78e: 52 passed (3 files) — up from the 45 passed recorded
+above, because the stretch commit added tests to differential.test.ts.
+Cause: the close-out capture ran before the stretch commit (2f3e78e), so
+it proved the tree at c6af86b, not the tree at HEAD. Fixed going forward:
+TODAY.md now orders the close-out capture as the last action of a cycle,
+after the final commit, re-run and amended if a stretch item lands.
