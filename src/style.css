@@ -1,96 +1,261 @@
+/*
+ * Tokens from skills/mono-design/SKILL.md, adapted for one documented
+ * conflict (see the skill's own Provenance block): its primary #37F712 on
+ * its surface #E7E5E4 fails WCAG AA for text (measured: ~1.16:1). The
+ * skill's own rule is accessibility over aesthetics, so --primary is used
+ * for borders, outlines, backgrounds and focus rings only — never in a
+ * `color:` declaration. Body text comes from --ink, chosen for AA contrast
+ * on --surface (measured: ~13.9:1), not from the skill's own --text token
+ * (~3.8:1, fails AA for normal-size text).
+ */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --surface: #e7e5e4;
+  --ink: #1c1917;
+  --ink-muted: #57534e; /* ~6.1:1 on --surface — AA-safe for small text, unlike the skill's own #78716b (~3.8:1) */
+  --primary: #37f712; /* borders / outlines / backgrounds only, never text */
+  --secondary: #00a6f4;
+  --success: #00a63d;
+  --warning: #fe9900;
+  --danger: #ff2157;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Space Mono', 'SFMono-Regular', Menlo, monospace;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+
+  color-scheme: light;
+  font-family: var(--font-mono);
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+  box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  background-color: var(--surface);
+  color: var(--ink);
 }
 
 #app {
-  max-width: 1280px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--space-4) var(--space-3);
+}
+
+.app-header h1 {
+  margin: 0 0 var(--space-1);
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  border-bottom: 2px solid var(--primary);
+  display: inline-block;
+  padding-bottom: var(--space-1);
+}
+
+.tagline {
+  margin: var(--space-2) 0 var(--space-4);
+  color: var(--ink-muted);
+  max-width: 60ch;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.field-row .field {
+  min-width: 12rem;
+}
+
+textarea,
+select,
+input {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background-color: #fff;
+  border: 1px solid var(--ink-muted);
+  border-radius: 2px;
+  padding: var(--space-2);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 10rem;
+}
+
+textarea:hover,
+select:hover,
+input:hover {
+  border-color: var(--ink);
+}
+
+textarea:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+
+textarea:disabled,
+select:disabled,
+input:disabled {
+  background-color: var(--surface);
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.errors {
+  margin-bottom: var(--space-3);
+}
+
+.errors-heading {
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 var(--space-1);
+}
+
+.error-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.error-item {
+  border-left: 3px solid var(--danger);
+  padding: var(--space-1) var(--space-2);
+  background-color: #fff;
+  color: var(--ink);
+}
+
+.empty-state {
+  border: 1px dashed var(--ink-muted);
+  border-radius: 2px;
+  padding: var(--space-4);
+  color: var(--ink-muted);
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #3178c6aa);
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
 }
 
-.card {
-  padding: 2em;
+.jobs-table caption {
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  margin-bottom: var(--space-2);
 }
 
-.read-the-docs {
-  color: #888;
+.jobs-table th,
+.jobs-table td {
+  border: 1px solid var(--surface);
+  padding: var(--space-2);
+  text-align: left;
+  vertical-align: top;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.jobs-table th {
+  background-color: var(--surface);
+  color: var(--ink);
+  border-bottom: 2px solid var(--primary);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.jobs-table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--surface) 45%, #fff);
+}
+
+.firings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.firing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.firing-skipped {
+  border-left: 3px solid var(--danger);
+  padding-left: var(--space-2);
+}
+
+.firing-repeated {
+  border-left: 3px solid var(--warning);
+  padding-left: var(--space-2);
+}
+
+.wall-clock {
+  font-weight: 600;
+}
+
+.utc {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+.note {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background-color: #fff;
+}
+
+.badge-skipped {
+  border: 1px solid var(--danger);
+}
+
+.badge-repeated {
+  border: 1px solid var(--warning);
+}
+
+.truncated-notice {
+  margin-top: var(--space-3);
+  border-left: 3px solid var(--secondary);
+  padding: var(--space-1) var(--space-2);
+  color: var(--ink-muted);
+  background-color: #fff;
 }

@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "cron-parser": "^5.10.1",
+    "happy-dom": "^20.14.5",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.2.7"
