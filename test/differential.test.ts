@@ -106,61 +106,80 @@ describe('generateOccurrences vs cron-parser: a genuine disagreement, kept not d
   })
 })
 
-describe('generateOccurrences: exploratory DST print (recorded, not asserted)', () => {
-  it('prints our instants for 30 2 * * * across the 2026 spring-forward and fall-back days', () => {
-    // Europe/Berlin: spring-forward is 2026-03-29 (02:00 -> 03:00, so 02:30
-    // does not exist that day); fall-back is 2026-10-25 (03:00 -> 02:00, so
-    // 02:30 happens twice). This run is deliberately NOT turned into an
-    // assertion today — day 3 classifies skipped/repeated; today's generator
-    // only produces instants, and whatever it does here is day 3's input,
-    // not a bug to fix now.
-    const spring = ours(
+describe('generateOccurrences: 30 2 * * * disagrees with the oracle on both DST days', () => {
+  // Day 3 built the classifier this asserts. cron-parser walks wall-clock
+  // minutes forward and reports whatever the underlying JS Date happens to
+  // produce for that minute; cronscape reports the wall clock the crontab
+  // actually asked for, resolved to its true set of 0/1/2 UTC instants. The
+  // two answers are not "one is buggy" — they are two different questions,
+  // and this test asserts both sides' real, printed behaviour rather than
+  // adjudicating a winner or deleting the disagreement to get green.
+
+  it('spring-forward 2026-03-29: oracle invents an instant, we correctly emit none', () => {
+    const result = generateOccurrences({
+      fields: fieldsOf('30 2 * * *'),
+      start: new Date('2026-03-29T00:00:00Z'),
+      end: new Date('2026-03-29T23:59:00Z'),
+      timeZone: 'Europe/Berlin',
+      cap: 10_000,
+    })
+    console.log('ours spring-forward 2026-03-29:', result.occurrences)
+
+    const oracleSpring = oracle(
       '30 2 * * *',
       new Date('2026-03-29T00:00:00Z'),
       new Date('2026-03-29T23:59:00Z'),
       'Europe/Berlin',
     )
-    const fall = ours(
+    console.log('oracle spring-forward 2026-03-29:', oracleSpring)
+
+    // The oracle's one instant is 03:30 local Berlin time (Berlin jumps
+    // 02:00 -> 03:00 at 01:00 UTC that day) — an hour after the 02:30 the
+    // crontab actually asks for. cron-parser walked its internal clock
+    // forward past the gap and fired anyway; it never asked "does 02:30
+    // exist today".
+    expect(oracleSpring).toEqual(['2026-03-29T01:30:00.000Z'])
+
+    // We report the wall clock the crontab asked for: it does not exist
+    // that day, so no instant fires and the anomaly carries the impossible
+    // wall clock instead. Asserted as counts, not membership, per the
+    // day-1 lesson that element checks can't verify the domain is right.
+    expect(result.instants.length).toBe(0)
+    const skipped = result.occurrences.filter((o) => o.kind === 'skipped')
+    expect(skipped.length).toBe(1)
+    expect(skipped[0].wallClock).toBe('2026-03-29T02:30')
+  })
+
+  it('fall-back 2026-10-25: oracle reports one instant, we correctly report both', () => {
+    const result = generateOccurrences({
+      fields: fieldsOf('30 2 * * *'),
+      start: new Date('2026-10-25T00:00:00Z'),
+      end: new Date('2026-10-25T23:59:00Z'),
+      timeZone: 'Europe/Berlin',
+      cap: 10_000,
+    })
+    console.log('ours fall-back 2026-10-25:', result.occurrences)
+
+    const oracleFall = oracle(
       '30 2 * * *',
       new Date('2026-10-25T00:00:00Z'),
       new Date('2026-10-25T23:59:00Z'),
       'Europe/Berlin',
     )
-    console.log('spring-forward 2026-03-29 (Europe/Berlin):', spring)
-    console.log('fall-back 2026-10-25 (Europe/Berlin):', fall)
+    console.log('oracle fall-back 2026-10-25:', oracleFall)
 
-    const oracleSpring = (() => {
-      try {
-        return oracle(
-          '30 2 * * *',
-          new Date('2026-03-29T00:00:00Z'),
-          new Date('2026-03-29T23:59:00Z'),
-          'Europe/Berlin',
-        )
-      } catch (e) {
-        return [`oracle error: ${(e as Error).message}`]
-      }
-    })()
-    const oracleFall = (() => {
-      try {
-        return oracle(
-          '30 2 * * *',
-          new Date('2026-10-25T00:00:00Z'),
-          new Date('2026-10-25T23:59:00Z'),
-          'Europe/Berlin',
-        )
-      } catch (e) {
-        return [`oracle error: ${(e as Error).message}`]
-      }
-    })()
-    console.log('oracle spring-forward:', oracleSpring)
-    console.log('oracle fall-back:', oracleFall)
-    // This console output is copied by hand into the capture file
-    // (media/2026-09-19-day2.txt) at close-out — the test itself does not
-    // write to that file, so re-running the suite never duplicates it.
+    // The oracle picks one side of the repeated hour (the first walk past
+    // 02:30 that minute) and reports it as the only firing. Vixie cron's
+    // actual behaviour is a separate, unverified claim that does not
+    // belong in this file (see BRIEF.md / docs/dst.md, day 5) — this
+    // assertion is only about what cron-parser, specifically, returns.
+    expect(oracleFall).toEqual(['2026-10-25T00:30:00.000Z'])
 
-    // Recorded, not asserted — the only "expectation" here is that the call
-    // completed without throwing, which the test reaching this line proves.
-    expect(true).toBe(true)
+    // 02:30 local happens twice that day; we report both instants, both
+    // labelled repeated.
+    expect(result.instants.length).toBe(2)
+    const repeated = result.occurrences.filter((o) => o.kind === 'repeated')
+    expect(repeated.length).toBe(2)
+    expect(result.instants).toEqual(['2026-10-25T00:30:00.000Z', '2026-10-25T01:30:00.000Z'])
   })
 })
