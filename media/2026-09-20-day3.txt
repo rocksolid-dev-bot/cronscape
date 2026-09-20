@@ -1,0 +1,75 @@
+cronscape — day 3 capture (2026-09-20, 10:15 Berlin cycle)
+
+--- item 1: corrected day-2 capture ---
+See media/2026-09-19-day2.txt — appended block "correction 2026-09-20"
+records 52 passed at HEAD 2f3e78e, tsc exit=0, and names the cause
+(close-out ran before the stretch commit).
+
+--- node -v ---
+v18.19.1
+
+--- npm ci (tail) ---
+up to date, audited 55 packages in ~1s
+2 moderate severity vulnerabilities (pre-existing vitest/@vitest/mocker
+advisories, unchanged since day 1/day 2, not introduced this cycle)
+
+--- npx tsc --noEmit ---
+exit=0
+
+--- npm test (summary) ---
+Test Files  4 passed (4)
+Tests  62 passed (62)
+(parse.test.ts 21, occurrences.test.ts 10, differential.test.ts 24, dst.test.ts 7)
+
+--- npm run build ---
+vite v6.4.3 building for production...
+✓ 4 modules transformed.
+dist/index.html                 0.39 kB │ gzip: 0.26 kB
+dist/assets/index-BmeGit54.css  1.20 kB │ gzip: 0.62 kB
+dist/assets/index-B5ujYmCY.js   0.85 kB │ gzip: 0.49 kB
+✓ built in 147ms
+exit=0
+
+--- ls dist/ ---
+assets
+index.html
+
+--- resolveWallClock printed table (item 2), all six/seven zones+dates ---
+Europe/Berlin    2026-03-29 02:30 -> {"kind":"skipped","instants":[]}
+Europe/Berlin    2026-10-25 02:30 -> {"kind":"repeated","instants":["2026-10-25T00:30:00.000Z","2026-10-25T01:30:00.000Z"]}
+Europe/Berlin    2026-06-15 02:30 -> {"kind":"normal","instants":["2026-06-15T00:30:00.000Z"]}
+Pacific/Auckland 2026-09-27 02:30 -> {"kind":"skipped","instants":[]}
+Pacific/Auckland 2026-04-05 02:30 -> {"kind":"repeated","instants":["2026-04-04T13:30:00.000Z","2026-04-04T14:30:00.000Z"]}
+UTC              2026-03-29 02:30 -> {"kind":"normal","instants":["2026-03-29T02:30:00.000Z"]}
+Asia/Kolkata     2026-10-25 02:30 -> {"kind":"normal","instants":["2026-10-24T21:00:00.000Z"]}
+
+Auckland dates (2026-09-27 skipped, 2026-04-05 repeated) were probed via
+Intl (hourly scan of 2026's UTC-offset changes for Pacific/Auckland)
+before being asserted in test/dst.test.ts, per the print-before-asserting
+rule — the probe agreed with the pre-run expectation, so no fixture change
+was needed.
+
+--- day 3 summary ---
+Item 1: appended correction block to 2026-09-19-day2.txt. Commit 61b0de2.
+Item 2: src/dst.ts's resolveWallClock resolves a wall clock to its true
+  set of 0/1/2 UTC instants via round-trip probing around a converged base
+  guess (handles both DST-hour probes and non-hour fixed offsets like
+  Kolkata's +5:30). occurrences.ts is the same-commit consumer: the old
+  wallClockToUtcMs is deleted, GenerateResult gains occurrences[] with
+  instant/wallClock/kind per candidate. Commit 1c7d2e1.
+Item 3: DST-specific acceptance tests for `30 2 * * *` in Europe/Berlin —
+  spring-forward reports one skipped occurrence with instant:null (no
+  invented 03:30 firing), fall-back reports two repeated instants an hour
+  apart, ordinary days stay normal. BRIEF.md:14 (workspace file, not in
+  this repo) corrected to describe what cronscape computes rather than
+  asserting Vixie cron's behaviour. Commit 4fb4a37.
+Stretch (collisions.ts) not attempted this cycle: the per-commit rule
+  requires a src/ consumer outside the defining file, and nothing else in
+  scope today calls it without either building UI (explicitly out of
+  scope until day 4) or inventing an artificial caller — left for day 4/5
+  when the UI or a CLI entry point is the natural consumer.
+
+grep -rn "throw " src/ : empty
+grep -rn "wallClockToUtcMs" src/ : empty
+grep -n "never runs" ../BRIEF.md (from code/) : empty
+git log origin/main..HEAD : empty (all three commits pushed)
