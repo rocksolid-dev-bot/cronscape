@@ -1,10 +1,12 @@
 // Generates the firing instants of one parsed cron line over a window, in a
 // given IANA timezone. Timezone arithmetic goes through `Intl.DateTimeFormat`
 // with a `timeZone` — never UTC-plus-offset addition, which is the shape
-// that gets DST wrong. DST *classification* (skipped/repeated) is a later
-// day's job: this module only produces instants, and never labels one.
+// that gets DST wrong. Each wall-clock candidate is resolved through
+// `resolveWallClock`, which returns the true set of UTC instants (0, 1 or 2)
+// instead of guessing one — see `dst.ts` and its own doc comment for why.
 
 import type { CronFields } from './parse.ts'
+import { resolveWallClock, type WallClockKind } from './dst.ts'
 
 export interface GenerateOptions {
   fields: CronFields
@@ -18,9 +20,24 @@ export interface GenerateOptions {
   cap: number
 }
 
+export interface Occurrence {
+  /** ISO-8601 UTC instant, or `null` for a `skipped` wall clock that never fires. */
+  instant: string | null
+  /** The wall-clock time that was resolved, as `YYYY-MM-DDTHH:mm` local (no zone suffix — it's a civil time, not a UTC instant). */
+  wallClock: string
+  kind: WallClockKind
+}
+
 export interface GenerateResult {
-  /** Firing instants, in order, as ISO-8601 UTC strings. */
+  /**
+   * Firing instants, in order, as ISO-8601 UTC strings. Derived from
+   * `occurrences`: every `normal` and `repeated` instant, in the same
+   * order they appear there. Kept for existing consumers and the
+   * differential oracle; `occurrences` is the fuller answer.
+   */
   instants: string[]
+  /** Every wall-clock candidate the window matched, each labelled with its DST kind. */
+  occurrences: Occurrence[]
   /** True when the window held more than `cap` instants and some were cut. */
   truncated: boolean
 }
@@ -65,23 +82,8 @@ function zonedParts(instant: Date, timeZone: string): ZonedParts {
   }
 }
 
-/**
- * Finds the UTC instant (in minutes) for a wall-clock date/time in
- * `timeZone`. Converges in at most two passes for ordinary offset changes;
- * near a DST jump this returns *a* plausible instant rather than flagging
- * the ambiguity — that flag is day 3's job, not this function's.
- */
-function wallClockToUtcMs(year: number, month: number, day: number, hour: number, minute: number, timeZone: string): number {
-  const desired = Date.UTC(year, month - 1, day, hour, minute)
-  let guess = desired
-  for (let i = 0; i < 2; i++) {
-    const observed = zonedParts(new Date(guess), timeZone)
-    const observedAsUtc = Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute)
-    const diff = desired - observedAsUtc
-    if (diff === 0) break
-    guess += diff
-  }
-  return guess
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`
 }
 
 /** Day of week (0 = Sunday) for a plain calendar date — independent of any zone. */
@@ -92,7 +94,7 @@ function weekdayOf(year: number, month: number, day: number): number {
 /** Generates the firing instants of `fields` between `start` and `end`, inclusive, in `timeZone`. */
 export function generateOccurrences(opts: GenerateOptions): GenerateResult {
   const { fields, start, end, timeZone, cap } = opts
-  const instants: string[] = []
+  const occurrences: Occurrence[] = []
   let truncated = false
   const startMs = start.getTime()
   const endMs = end.getTime()
@@ -107,6 +109,15 @@ export function generateOccurrences(opts: GenerateOptions): GenerateResult {
   const endDay = zonedParts(end, timeZone)
   let dayAnchor = Date.UTC(startDay.year, startDay.month - 1, startDay.day - 1, 12, 0, 0)
   const dayAnchorEnd = Date.UTC(endDay.year, endDay.month - 1, endDay.day + 1, 12, 0, 0)
+
+  // A skipped wall clock has no instant to test against [startMs, endMs], so
+  // it is kept when its *naive* UTC reading (wall clock read as if it were
+  // already UTC) falls within a few hours of the window — generous enough
+  // to survive any real zone offset, since the day loop above already did
+  // the coarse day-level filtering.
+  const SKIPPED_SLACK_MS = 3 * 60 * 60 * 1000
+
+  let emittedCount = 0
 
   outer: while (dayAnchor <= dayAnchorEnd) {
     const d = new Date(dayAnchor)
@@ -123,13 +134,27 @@ export function generateOccurrences(opts: GenerateOptions): GenerateResult {
       if (dayOk) {
         for (const hour of fields.hour) {
           for (const minute of fields.minute) {
-            const utcMs = wallClockToUtcMs(year, month, day, hour, minute, timeZone)
-            if (utcMs < startMs || utcMs > endMs) continue
-            instants.push(new Date(utcMs).toISOString())
-            if (instants.length > cap) {
-              instants.pop()
-              truncated = true
-              break outer
+            const wallClock = `${year}-${pad2(month)}-${pad2(day)}T${pad2(hour)}:${pad2(minute)}`
+            const resolution = resolveWallClock(year, month, day, hour, minute, timeZone)
+
+            if (resolution.kind === 'skipped') {
+              const naiveMs = Date.UTC(year, month - 1, day, hour, minute)
+              if (naiveMs < startMs - SKIPPED_SLACK_MS || naiveMs > endMs + SKIPPED_SLACK_MS) continue
+              occurrences.push({ instant: null, wallClock, kind: 'skipped' })
+              continue
+            }
+
+            for (const instant of resolution.instants) {
+              const utcMs = new Date(instant).getTime()
+              if (utcMs < startMs || utcMs > endMs) continue
+              occurrences.push({ instant, wallClock, kind: resolution.kind })
+              emittedCount += 1
+              if (emittedCount > cap) {
+                occurrences.pop()
+                emittedCount -= 1
+                truncated = true
+                break outer
+              }
             }
           }
         }
@@ -139,12 +164,17 @@ export function generateOccurrences(opts: GenerateOptions): GenerateResult {
     dayAnchor += 24 * 60 * 60 * 1000
   }
 
-  // Instants are appended day-by-day, hour-then-minute within a day, so they
-  // are already chronological — but the widened scan can visit the trailing
-  // buffer day before a not-yet-visited earlier one only if dates are out of
-  // order, which they never are here. Sort defensively anyway: it is one
-  // cheap call and removes any doubt.
-  instants.sort()
+  // Occurrences are appended day-by-day, hour-then-minute within a day, and
+  // within one wall clock a `repeated` resolution's instants are already
+  // ascending — so the list is already chronological by (instant ?? naive
+  // wall-clock-as-UTC). Sort defensively anyway: one cheap call, no doubt.
+  occurrences.sort((a, b) => {
+    const aMs = a.instant ? new Date(a.instant).getTime() : Date.parse(`${a.wallClock}:00Z`)
+    const bMs = b.instant ? new Date(b.instant).getTime() : Date.parse(`${b.wallClock}:00Z`)
+    return aMs - bMs
+  })
 
-  return { instants, truncated }
+  const instants = occurrences.filter((o): o is Occurrence & { instant: string } => o.instant !== null).map((o) => o.instant)
+
+  return { instants, occurrences, truncated }
 }

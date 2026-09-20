@@ -70,7 +70,7 @@ describe('generateOccurrences: dom/dow OR rule, one combination per test', () =>
 describe('generateOccurrences: bounds', () => {
   it('an unsatisfiable expression (Feb 30) returns empty, not truncated, and finishes', () => {
     const result = run('0 0 30 2 *', '2025-01-01T00:00:00Z', '2028-01-01T00:00:00Z')
-    expect(result).toEqual({ instants: [], truncated: false })
+    expect(result).toEqual({ instants: [], occurrences: [], truncated: false })
   })
 
   it('a window with more matches than the cap returns exactly cap instants, truncated', () => {
