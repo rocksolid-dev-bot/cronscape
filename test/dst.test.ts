@@ -55,6 +55,43 @@ describe('resolveWallClock: Pacific/Auckland (southern hemisphere)', () => {
   })
 })
 
+describe('resolveWallClock: Australia/Lord_Howe (30-minute transition)', () => {
+  // Probed directly against Intl before writing these fixtures: scanning
+  // hourly through 2026 for Australia/Lord_Howe's UTC offset shows it
+  // changes GMT+11 -> GMT+10:30 (fall-back) at 2026-04-04T15:00:00.000Z
+  // and GMT+10:30 -> GMT+11 (spring-forward) at 2026-10-03T16:00:00.000Z —
+  // a half-hour shift each way, not the whole-hour shift every other zone
+  // in this file uses. That is the gap the old ±0/±1h/±2h ladder missed:
+  // its invariant (instants.length matches kind) stayed true while the
+  // fall-back window's second instant was simply never probed for.
+
+  it('fall-back 2026-04-05 01:45 is repeated: 2 instants, 1800000ms apart', () => {
+    const r = resolveWallClock(2026, 4, 5, 1, 45, 'Australia/Lord_Howe')
+    console.log('Lord Howe fall-back 2026-04-05 01:45:', r)
+    expect(r.kind).toBe('repeated')
+    expect(r.instants.length).toBe(2)
+    const gapMs = new Date(r.instants[1]).getTime() - new Date(r.instants[0]).getTime()
+    expect(gapMs).toBe(1800000)
+    // The UTC *date* is the day before the local date — printed above,
+    // not taken on trust.
+    expect(r.instants[0]).toBe('2026-04-04T14:45:00.000Z')
+    expect(r.instants[1]).toBe('2026-04-04T15:15:00.000Z')
+  })
+
+  it('spring-forward 2026-10-04 02:15 is skipped: 0 instants', () => {
+    // Binary-searched against Intl (finer than the hourly scan above): the
+    // spring-forward transition lands at exactly 2026-10-03T15:30:00.000Z,
+    // which is local 02:00 (GMT+10:30 side) jumping to 02:30 (GMT+11 side)
+    // on 2026-10-04 — so 02:15 local that day falls inside the skipped
+    // half hour (02:45, the hourly scan's first guess, does not: it is
+    // past the jump and resolves normally).
+    const r = resolveWallClock(2026, 10, 4, 2, 15, 'Australia/Lord_Howe')
+    console.log('Lord Howe spring-forward 2026-10-04 02:15:', r)
+    expect(r.kind).toBe('skipped')
+    expect(r.instants.length).toBe(0)
+  })
+})
+
 describe('resolveWallClock: zones with no hour-sized or no DST transition at all', () => {
   it('UTC never has a transition: always normal, length 1', () => {
     const r = resolveWallClock(2026, 3, 29, 2, 30, 'UTC')

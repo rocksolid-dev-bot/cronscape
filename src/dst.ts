@@ -56,16 +56,15 @@ function zonedParts(instantMs: number, timeZone: string): ZonedParts {
   }
 }
 
-const HOUR_MS = 60 * 60 * 1000
-
 /**
  * Resolves `year-month-day hour:minute` local time in `timeZone` to the set
  * of UTC instants it denotes.
  *
  * Method: take the naive UTC guess (as if the wall clock were UTC), then
- * probe candidate instants at the offsets that cover every real-world
- * transition (`guess`, `guess ± 1h`, `guess ± 2h`), and keep exactly the
- * candidates that **round-trip** — i.e. render back to the requested wall
+ * probe candidate instants at 15-minute steps across `guess ± 2h` (any
+ * transition that is a multiple of 15 minutes, up to 2h — most zones shift
+ * by a whole hour, but `Australia/Lord_Howe` shifts 30 minutes), and keep
+ * exactly the candidates that **round-trip** — i.e. render back to the requested wall
  * clock when read back through `Intl` in `timeZone`. A skipped wall clock
  * round-trips to a different wall clock for every candidate, so it keeps
  * none; a repeated wall clock is rendered by two distinct UTC instants, so
@@ -96,9 +95,13 @@ export function resolveWallClock(
     baseGuess += diff
   }
 
-  // Around that converged base guess, probe the offsets that cover every
-  // real-world DST transition size.
-  const offsets = [0, -HOUR_MS, HOUR_MS, -2 * HOUR_MS, 2 * HOUR_MS]
+  // Around that converged base guess, probe 15-minute steps across ±2h —
+  // wide enough to cover Australia/Lord_Howe's 30-minute shift as well as
+  // every whole-hour transition, without widening to the point that a
+  // second real transition could fall inside the window.
+  const QUARTER_HOUR_MS = 15 * 60 * 1000
+  const offsets: number[] = []
+  for (let step = -8; step <= 8; step++) offsets.push(step * QUARTER_HOUR_MS)
 
   const kept = new Set<number>()
   for (const offset of offsets) {
