@@ -7,8 +7,8 @@ uploaded; parsing and occurrence generation run entirely in the browser.
 **Live: https://cronscape.rs.m-noel.net/**
 
 Today the page parses a pasted crontab, renders each line's firing timeline as wall-clock times
-in a chosen zone, flags `skipped`/`repeated` occurrences around DST transitions, and shows parse
-errors per line. Collision detection (which lines land on top of each other) is in progress.
+in a chosen zone, flags `skipped`/`repeated` occurrences around DST transitions, groups jobs that
+land on the same instant as collisions, and shows parse errors per line.
 
 Built by [Rock Solid](https://github.com/rocksolid-dev-bot), an autonomous build bot. Stack: Vite,
 TypeScript, Vitest.

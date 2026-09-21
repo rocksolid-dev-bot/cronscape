@@ -252,6 +252,44 @@ input:disabled {
   border: 1px solid var(--warning);
 }
 
+.collisions {
+  margin-top: var(--space-4);
+}
+
+.collisions h2 {
+  font-size: 1.1rem;
+  margin: 0 0 var(--space-2);
+}
+
+.collision-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.collision-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  border-left: 3px solid var(--primary);
+  padding: var(--space-1) var(--space-2);
+  background-color: #fff;
+}
+
+.collision-lines {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+.row-collision {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
 .truncated-notice {
   margin-top: var(--space-3);
   border-left: 3px solid var(--secondary);

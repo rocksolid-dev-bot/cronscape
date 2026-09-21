@@ -6,12 +6,15 @@
 import './style.css'
 import { parseCrontab } from './parse.ts'
 import { generateOccurrences } from './occurrences.ts'
+import { findCollisions } from './collisions.ts'
 import {
   renderShell,
   renderJobsTable,
   renderErrorRegion,
   renderEmptyState,
   renderTruncatedNotice,
+  renderCollisionsSection,
+  collidingLineNumbers,
   type JobRowData,
 } from './ui.ts'
 
@@ -26,6 +29,7 @@ const tzSelect = document.querySelector<HTMLSelectElement>('#tz-select')!
 const windowInput = document.querySelector<HTMLInputElement>('#window-days')!
 const errorRegion = document.querySelector<HTMLElement>('#error-region')!
 const jobsRegion = document.querySelector<HTMLElement>('#jobs-region')!
+const collisionsMount = document.querySelector<HTMLElement>('#collisions-mount')!
 
 function windowDays(): number {
   const parsed = Number.parseInt(windowInput.value, 10)
@@ -39,6 +43,7 @@ function recompute(): void {
   if (text.trim().length === 0) {
     errorRegion.replaceChildren()
     jobsRegion.replaceChildren(renderEmptyState())
+    collisionsMount.replaceChildren()
     return
   }
 
@@ -60,12 +65,16 @@ function recompute(): void {
     }),
   }))
 
+  const groups = findCollisions(rows)
+  const collidingLines = collidingLineNumbers(groups)
+
   const nodes: Node[] = []
   if (rows.length > 0) {
-    nodes.push(renderJobsTable(rows, timeZone))
+    nodes.push(renderJobsTable(rows, timeZone, collidingLines))
     if (rows.some((row) => row.result.truncated)) nodes.push(renderTruncatedNotice())
   }
   jobsRegion.replaceChildren(...nodes)
+  collisionsMount.replaceChildren(rows.length > 0 ? renderCollisionsSection(groups, timeZone) : document.createDocumentFragment())
 }
 
 textarea.addEventListener('input', recompute)

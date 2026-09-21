@@ -7,6 +7,7 @@
 
 import type { CronLine, ParseError } from './parse.ts'
 import type { GenerateResult } from './occurrences.ts'
+import type { CollisionGroup } from './collisions.ts'
 
 /**
  * The textarea's initial content. Eight lines on purpose: a comment, a
@@ -59,6 +60,7 @@ export function renderShell(): string {
       </section>
       <section id="error-region" class="errors" aria-live="polite"></section>
       <section id="jobs-region" class="jobs" aria-label="Firings"></section>
+      <div id="collisions-mount"></div>
     </main>
   `
 }
@@ -118,10 +120,14 @@ function buildFiringItem(occurrence: GenerateResult['occurrences'][number]): HTM
 
 /** One `<tr>` per crontab job: expression, command, and its firings as
  * wall-clock times in the selected zone, each with the UTC instant in a
- * `title` attribute and, for anomalies, a second visible column. */
-function buildJobRow(data: JobRowData): HTMLTableRowElement {
+ * `title` attribute and, for anomalies, a second visible column.
+ * `collidingLines` marks rows whose line number appears in at least one
+ * collision group — border/outline only, per the design skill's own AA
+ * conflict rule, never a `color:` declaration. */
+function buildJobRow(data: JobRowData, collidingLines: ReadonlySet<number>): HTMLTableRowElement {
   const { line, result } = data
   const tr = document.createElement('tr')
+  if (collidingLines.has(line.line)) tr.className = 'row-collision'
 
   const exprCell = document.createElement('td')
   const exprCode = document.createElement('code')
@@ -154,8 +160,13 @@ function buildJobRow(data: JobRowData): HTMLTableRowElement {
 
 /** The whole jobs table for a parsed crontab. Callers only reach this with
  * `rows.length > 0`; the empty-textarea and all-errors cases are `main.ts`
- * decisions, not this function's — it renders what it's given. */
-export function renderJobsTable(rows: JobRowData[], timeZone: string): HTMLElement {
+ * decisions, not this function's — it renders what it's given.
+ * `collidingLines` (default: none) marks rows involved in a collision. */
+export function renderJobsTable(
+  rows: JobRowData[],
+  timeZone: string,
+  collidingLines: ReadonlySet<number> = new Set(),
+): HTMLElement {
   const table = document.createElement('table')
   table.className = 'jobs-table'
 
@@ -175,10 +186,82 @@ export function renderJobsTable(rows: JobRowData[], timeZone: string): HTMLEleme
   table.appendChild(thead)
 
   const tbody = document.createElement('tbody')
-  for (const row of rows) tbody.appendChild(buildJobRow(row))
+  for (const row of rows) tbody.appendChild(buildJobRow(row, collidingLines))
   table.appendChild(tbody)
 
   return table
+}
+
+/** `YYYY-MM-DDTHH:mm:ss.sssZ` -> `YYYY-MM-DD HH:mm` in `timeZone`, for the
+ * collisions section's group heading — the anchor is a UTC instant
+ * (`anchorMs`), read back as the wall clock a person would recognise. */
+function formatAnchor(anchorMs: number, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(anchorMs))
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`
+}
+
+/** Every crontab line number that appears in at least one collision group. */
+export function collidingLineNumbers(groups: CollisionGroup[]): Set<number> {
+  const lines = new Set<number>()
+  for (const group of groups) for (const member of group.members) lines.add(member.line.line)
+  return lines
+}
+
+/** The collisions section: one entry per group, its wall-clock time (in
+ * `timeZone`) and the crontab line numbers involved. Rendered with text in
+ * both the collisions and no-collisions case — an empty region reads as a
+ * loading state, not as "checked, none found". */
+export function renderCollisionsSection(groups: CollisionGroup[], timeZone: string): HTMLElement {
+  const section = document.createElement('section')
+  section.id = 'collisions-region'
+  section.className = 'collisions'
+  section.setAttribute('aria-label', 'Collisions')
+
+  const heading = document.createElement('h2')
+  heading.textContent = 'Collisions'
+  section.appendChild(heading)
+
+  if (groups.length === 0) {
+    const p = document.createElement('p')
+    p.id = 'no-collisions'
+    p.className = 'note'
+    p.textContent = 'No jobs land on the same instant in this window.'
+    section.appendChild(p)
+    return section
+  }
+
+  const list = document.createElement('ul')
+  list.className = 'collision-list'
+  for (const group of groups) {
+    const li = document.createElement('li')
+    li.className = 'collision-item'
+
+    const time = document.createElement('span')
+    time.className = 'wall-clock'
+    time.textContent = formatAnchor(group.anchorMs, timeZone)
+    li.appendChild(time)
+
+    const lineNumbers = [...new Set(group.members.map((m) => m.line.line))].sort((a, b) => a - b)
+    const lines = document.createElement('span')
+    lines.className = 'collision-lines'
+    lines.textContent = `lines ${lineNumbers.join(', ')}`
+    li.appendChild(lines)
+
+    list.appendChild(li)
+  }
+  section.appendChild(list)
+
+  return section
 }
 
 /** The parse-error region's contents. Returns an empty, still-live

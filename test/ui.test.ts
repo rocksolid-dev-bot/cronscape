@@ -14,11 +14,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { parseCrontab } from '../src/parse.ts'
 import { generateOccurrences } from '../src/occurrences.ts'
+import { findCollisions } from '../src/collisions.ts'
 import {
   renderShell,
   renderJobsTable,
   renderErrorRegion,
   renderEmptyState,
+  renderCollisionsSection,
+  collidingLineNumbers,
   type JobRowData,
 } from '../src/ui.ts'
 
@@ -110,6 +113,34 @@ describe('renderEmptyState', () => {
     const found = container.querySelector('#empty-state')
     expect(found).toBeTruthy()
     expect(found!.textContent!.length).toBeGreaterThan(0)
+  })
+})
+
+describe('renderCollisionsSection', () => {
+  it('the fixture crontab (0 3 * * * on lines 4 and 5) renders both line numbers', () => {
+    const crontab = parseCrontab(FIXTURE)
+    const rows = rowsFor(crontab.lines, new Date('2026-06-01T00:00:00Z'), new Date('2026-06-02T00:00:00Z'), 'Europe/Berlin')
+    const groups = findCollisions(rows)
+    const section = renderCollisionsSection(groups, 'Europe/Berlin')
+    container.appendChild(section)
+
+    expect(section.textContent).toContain('4')
+    expect(section.textContent).toContain('5')
+    expect(collidingLineNumbers(groups)).toEqual(new Set([4, 5]))
+  })
+
+  it('a crontab with no collisions renders the empty-collisions state, present and non-empty', () => {
+    const crontab = parseCrontab('0 3 * * * /usr/bin/only-one.sh\n')
+    const rows = rowsFor(crontab.lines, new Date('2026-06-01T00:00:00Z'), new Date('2026-06-02T00:00:00Z'), 'UTC')
+    const groups = findCollisions(rows)
+    expect(groups.length).toBe(0)
+
+    const section = renderCollisionsSection(groups, 'UTC')
+    container.appendChild(section)
+
+    const empty = section.querySelector('#no-collisions')
+    expect(empty).toBeTruthy()
+    expect(empty!.textContent!.length).toBeGreaterThan(0)
   })
 })
 
