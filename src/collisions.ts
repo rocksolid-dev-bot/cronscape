@@ -69,11 +69,8 @@ export function findCollisions(jobs: JobOccurrences[], windowSeconds = 60): Coll
     }
 
     const distinctLines = new Set(members.map((m) => m.line.line))
-    if (distinctLines.size >= 2) {
-      groups.push({ anchorMs, members })
-    }
-
-    i = j
+    if (distinctLines.size >= 2) { groups.push({ anchorMs, members }); i = j }
+    else { i += 1 }
   }
 
   return groups
