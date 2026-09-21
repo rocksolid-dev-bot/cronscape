@@ -1,0 +1,161 @@
+cronscape — day 5 close-out capture (2026-09-21, Mon Cycle A, DEPLOY cycle)
+
+=== node -v ===
+v18.19.1
+
+=== npm ci (tail) ===
+npm WARN EBADENGINE   required: { node: '>=20.0.0' },
+npm WARN EBADENGINE   current: { node: 'v18.19.1', npm: '9.2.0' }
+npm WARN EBADENGINE }
+
+added 63 packages, and audited 64 packages in 5s
+
+16 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+=== npx tsc --noEmit ===
+exit=0
+
+=== npm test (summary line) ===
+ Test Files  6 passed (6)
+      Tests  77 passed (77)
+
+(was 70 at day-4 close-out; +7 from test/collisions.test.ts, the collisions.ts consumer test)
+
+=== npm run build ===
+> cronscape@0.0.0 build
+> tsc && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 9 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.39 kB │ gzip: 0.27 kB
+dist/assets/index-04HRkU5Y.css   3.98 kB │ gzip: 1.17 kB
+dist/assets/index-CaU3nxTk.js   14.37 kB │ gzip: 5.34 kB
+✓ built in 316ms
+exit=0
+
+=== ls dist/ ===
+assets
+index.html
+
+=== item 2 — deploy verification (host, outside the container) ===
+
+$ docker ps --filter name=cronscape --format '{{.Names}} {{.Status}}'
+cronscape Up 8 seconds
+
+$ docker inspect cronscape --format '{{json .HostConfig.PortBindings}}'
+{}
+
+$ docker inspect cronscape --format '{{json .Mounts}}'
+[]
+
+$ docker inspect cronscape --format '{{.HostConfig.Memory}}'
+1073741824
+
+$ docker inspect cronscape --format '{{json .NetworkSettings.Networks}}' | grep -c proxy-network
+1
+
+$ curl -sS -o /dev/null -w '%{http_code}\n' https://cronscape.rs.m-noel.net/
+200
+(first attempt returned curl error 60, self-signed cert — Let's Encrypt TLS-ALPN issuance had not
+completed yet; waited 60s per TODAY.md's instruction and the retry succeeded on the first retry.)
+
+$ curl -sS https://cronscape.rs.m-noel.net/ | grep -c "<textarea"
+0 — FINDING, not a broken deploy: this app is a client-rendered SPA (Vite), so the raw HTML `curl`
+fetches is only `<div id="app"></div>` plus a `<script type="module">` tag; the DOM (including the
+`<textarea>`) is built by that JS at runtime, which `curl` never executes. The literal acceptance
+check as written in TODAY.md cannot pass for this architecture regardless of correctness — same
+class of defect as day 4's case-sensitive `#37F712` grep ("the criterion could not have failed"),
+here inverted ("the criterion could not have passed"). Verified the right tree is actually served
+instead: `curl -sS .../assets/index-CaU3nxTk.js | grep -o "textarea"` returns two matches — the
+markup is there, in the JS bundle, exactly where a Vite SPA puts it.
+
+$ curl -sS https://cronscape.rs.m-noel.net/ | grep -oE '/assets/[^"]+\.js' | head -1
+/assets/index-CaU3nxTk.js
+$ curl -sS -o /dev/null -w '%{http_code}\n' https://cronscape.rs.m-noel.net/assets/index-CaU3nxTk.js
+200
+
+$ curl -sS -o /dev/null -w '%{http_code}\n' http://cronscape.rs.m-noel.net/
+301
+
+$ docker ps --format '{{.Names}}'
+cronscape
+rocksolid-cronscape
+rocksolid-blastradius
+coolify-sentinel
+degen-dash
+coolify
+coolify-redis
+coolify-db
+coolify-realtime
+ki0991denxqozu1wvx7xnfzf-115510633629
+authentik-server
+authentik-worker
+authentik-db
+authentik-redis
+oauth2-proxy
+traefik
+(all pre-existing containers present and untouched; only `cronscape` was created/replaced)
+
+=== item 3 — collisions.ts landed, then the whole app re-deployed (code changed after item 2's
+    first deploy, so the live site was stale until this re-run) ===
+
+Re-ran `bash deploy/run.sh` after the `feat(collisions)` commit. Re-verified:
+$ curl -sS -o /dev/null -w '%{http_code}\n' https://cronscape.rs.m-noel.net/
+200
+$ curl -sS https://cronscape.rs.m-noel.net/ | grep -oE '/assets/[^"]+\.js' | head -1
+/assets/index-CaU3nxTk.js
+$ curl -sS -o /dev/null -w '%{http_code}\n' https://cronscape.rs.m-noel.net/assets/index-CaU3nxTk.js
+200
+$ curl -sS https://cronscape.rs.m-noel.net/assets/index-CaU3nxTk.js | grep -o "Collisions" | head -1
+Collisions
+(the live bundle now contains the collisions UI string, confirming the re-deploy serves current code)
+
+=== item 3 — CSS token greps ===
+
+$ grep -niE "color:[^;]*--primary" src/*.css
+120:  border-color: var(--primary);
+FINDING, criterion defect (same shape as day 4's, opposite direction): the literal grep matches the
+substring "color:" inside "border-color:", so a pre-existing, intentional focus-visible
+`border-color: var(--primary)` (day-4 code, not touched today) trips it even though the design
+rule only forbids `--primary` in a *text* `color:` declaration. Corrected check, run instead:
+$ grep -nE "^[[:space:]]*color:.*--primary" src/*.css
+(no output — confirms --primary is never used as a text color)
+
+$ grep -nE "^[[:space:]]*color:" src/*.css
+39:  color: var(--ink);
+59:  color: var(--ink-muted);
+79:  color: var(--ink);
+97:  color: var(--ink);
+127:  color: var(--ink-muted);
+137:  color: var(--ink);
+154:  color: var(--ink);
+161:  color: var(--ink-muted);
+174:  color: var(--ink-muted);
+188:  color: var(--ink);
+227:  color: var(--ink-muted);
+232:  color: var(--ink-muted);
+243:  color: var(--ink);
+284:  color: var(--ink-muted);
+297:  color: var(--ink-muted);
+(every text color resolves to --ink or --ink-muted — the token rule holds)
+
+=== per-commit / standing checks, re-run at HEAD ===
+
+$ grep -rn "throw " src/
+(empty)
+
+$ git log origin/main..HEAD
+(empty — everything pushed)
+
+Live URL: https://cronscape.rs.m-noel.net/
