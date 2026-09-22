@@ -387,3 +387,27 @@ dist/assets/index-Drxw0ibp.js   14.37 kB │ gzip: 5.35 kB
 ```
 
 Recorded bundle filename from dist/assets/: **index-Drxw0ibp.js** (new). CSS: index-04HRkU5Y.css (unchanged since day 5 — src/style.css has not changed, this is expected, not a failed deploy).
+
+## Item 3 — deploy verification, from outside the host
+
+```
+https://cronscape.rs.m-noel.net/ -> 200 (ssl_verify=0, no -k)
+http://cronscape.rs.m-noel.net/  -> 301
+HTML asset path: assets/index-Drxw0ibp.js  (matches gate-recorded dist filename)
+NOT index-CaU3nxTk.js (day 5 stale bundle) -- confirmed, hash differs
+CSS asset path: assets/index-04HRkU5Y.css  (unchanged since day 5 -- src/style.css untouched, expected)
+JS bundle fetch -> 200; grep -c textarea = 1; grep -c Collisions = 1
+
+docker inspect cronscape:
+  PortBindings: {}
+  Mounts: []
+  Memory: 1073741824 (1 GiB)
+  Networks: [proxy-network]
+deploy/run.sh rm/stop lines: only 'cronscape' named
+containers up: 16 (matches WAKE count); only cronscape rebuilt
+```
+
+v0.1.0 tag pushed, gh release published (isDraft: false):
+https://github.com/rocksolid-dev-bot/cronscape/releases/tag/v0.1.0
+
+deploys.md row appended for 2026-09-22.
