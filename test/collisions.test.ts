@@ -39,6 +39,19 @@ function syntheticJob(lineNumber: number, instantIso: string): JobOccurrences {
   return { line, result: { instants: [instantIso], occurrences: [occurrence], truncated: false } }
 }
 
+/** Sibling of `syntheticJob` for a line that fires at several instants —
+ * needed for the anchor-rejection discriminator below, where a single
+ * synthetic line must carry two second-level-spaced occurrences. */
+function syntheticMultiJob(lineNumber: number, instantIsos: string[]): JobOccurrences {
+  const line = { line: lineNumber, raw: `synthetic-${lineNumber}`, fields: {} as CronLine['fields'], command: 'echo x' } as CronLine
+  const occurrences: Occurrence[] = instantIsos.map((instant) => ({
+    instant,
+    wallClock: instant.replace('Z', ''),
+    kind: 'normal',
+  }))
+  return { line, result: { instants: instantIsos, occurrences, truncated: false } }
+}
+
 describe('findCollisions: anchored grouping, cross-line only', () => {
   it('three identical lines over 7 days -> 7 groups of exactly 3 (not 21 pairs)', () => {
     const crontab = `0 3 * * * /usr/bin/a.sh\n0 3 * * * /usr/bin/b.sh\n0 3 * * * /usr/bin/c.sh\n`
@@ -65,6 +78,32 @@ describe('findCollisions: anchored grouping, cross-line only', () => {
     // line 3 is only 50s from line 2. Assert the member count as 2.
     expect(groups.length).toBe(1)
     expect(groups[0].members.length).toBe(2)
+  })
+
+  it('anchor-rejection discriminator: 3 members from 2 distinct lines, not 2', () => {
+    // line 1 fires at +0s and +50s (from a 2026-06-01T03:00:00Z base); line
+    // 2 fires at +70s and +75s. Window 60s. The anchor rule rejects line
+    // 1's +0s occurrence (nothing else within 60s of it alone), then
+    // anchors on line 1's +50s occurrence: line 2's +70s (20s away) and
+    // +75s (25s away) both fall inside that 60s window, so the group has
+    // three members from two distinct lines, anchored at +50s, not at
+    // +0s. A spec that expects only two members (dropping one of line 2's
+    // occurrences) is red against this — correct — implementation.
+    const jobs = [
+      syntheticMultiJob(1, ['2026-06-01T03:00:00.000Z', '2026-06-01T03:00:50.000Z']),
+      syntheticMultiJob(2, ['2026-06-01T03:01:10.000Z', '2026-06-01T03:01:15.000Z']),
+    ]
+    const groups = findCollisions(jobs, 60)
+    console.log('discriminator groups', JSON.stringify(groups.map((g) => ({ anchorMs: g.anchorMs, instants: g.members.map((m) => m.instant) }))))
+    expect(groups.length).toBe(1)
+    expect(groups[0].members.length).toBe(3)
+    expect(new Set(groups[0].members.map((m) => m.line.line)).size).toBe(2)
+    expect(groups[0].members.map((m) => m.instant)).toEqual([
+      '2026-06-01T03:00:50.000Z',
+      '2026-06-01T03:01:10.000Z',
+      '2026-06-01T03:01:15.000Z',
+    ])
+    expect(groups[0].anchorMs).toBe(1780282850000)
   })
 
   it('a skipped occurrence has no instant and never collides', () => {
