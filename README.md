@@ -102,7 +102,7 @@ never stops the rest of the file from rendering.
 | Occurrence cap | **500** per crontab line per generation window (`src/main.ts`). A window that would produce more is truncated and flagged, never silently cut off. |
 | Generation window | 1–365 days, default 7, set in the UI. |
 
-See [`docs/dst.md`](./docs/dst.md) for the full DST rule, a worked table across five timezones,
+See [`docs/dst.md`](docs/dst.md) for the full DST rule, a worked table across five timezones,
 and where an independent cron implementation disagrees with cronscape by design.
 
 ## What it does not do
