@@ -1,0 +1,104 @@
+# cronscape day 8 capture — 2026-09-22
+
+## Item 2b — falsifier proof: reverted line 73, ran discriminator test, captured failure, then restored
+
+### FAILING run (src/collisions.ts line 73 reverted to unconditional `i = j`, else-branch removed):
+```
+
+ RUN  v3.2.7 /work/code
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > three identical lines over 7 days -> 7 groups of exactly 3 (not 21 pairs)
+group count 7 member counts [
+  3, 3, 3, 3,
+  3, 3, 3
+]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > anchoring: 03:00:00 / 03:00:50 / 03:01:40, 60s window -> one group of 2, not 3
+groups [["2026-06-01T03:00:00.000Z","2026-06-01T03:00:50.000Z"]]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > anchor-rejection discriminator: 3 members from 2 distinct lines, not 2
+discriminator groups []
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > a skipped occurrence has no instant and never collides
+groups on spring-forward day 0
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > fall-back day: two repeated instants -> 2 groups, anchors 3600000ms apart
+fall-back groups 2 [ 1792888200000, 1792891800000 ]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > one line cannot collide with itself
+self-collision groups 0
+
+ ❯ test/collisions.test.ts (6 tests | 1 failed) 61ms
+   ✓ findCollisions: anchored grouping, cross-line only > three identical lines over 7 days -> 7 groups of exactly 3 (not 21 pairs) 37ms
+   ✓ findCollisions: anchored grouping, cross-line only > anchoring: 03:00:00 / 03:00:50 / 03:01:40, 60s window -> one group of 2, not 3 1ms
+   × findCollisions: anchored grouping, cross-line only > anchor-rejection discriminator: 3 members from 2 distinct lines, not 2 11ms
+     → expected +0 to be 1 // Object.is equality
+   ✓ findCollisions: anchored grouping, cross-line only > a skipped occurrence has no instant and never collides 3ms
+   ✓ findCollisions: anchored grouping, cross-line only > fall-back day: two repeated instants -> 2 groups, anchors 3600000ms apart 5ms
+   ✓ findCollisions: anchored grouping, cross-line only > one line cannot collide with itself 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > anchor-rejection discriminator: 3 members from 2 distinct lines, not 2
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ test/collisions.test.ts:98:27
+     96|     const groups = findCollisions(jobs, 60)
+     97|     console.log('discriminator groups', JSON.stringify(groups.map((g) …
+     98|     expect(groups.length).toBe(1)
+       |                           ^
+     99|     expect(groups[0].members.length).toBe(3)
+    100|     expect(new Set(groups[0].members.map((m) => m.line.line)).size).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  15:16:26
+   Duration  686ms (transform 214ms, setup 0ms, collect 211ms, tests 61ms, environment 0ms, prepare 110ms)
+
+```
+
+### PASSING run (shipped code restored, `else { i += 1 }` back in place):
+```
+
+ RUN  v3.2.7 /work/code
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > three identical lines over 7 days -> 7 groups of exactly 3 (not 21 pairs)
+group count 7 member counts [
+  3, 3, 3, 3,
+  3, 3, 3
+]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > anchoring: 03:00:00 / 03:00:50 / 03:01:40, 60s window -> one group of 2, not 3
+groups [["2026-06-01T03:00:00.000Z","2026-06-01T03:00:50.000Z"]]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > anchor-rejection discriminator: 3 members from 2 distinct lines, not 2
+discriminator groups [{"anchorMs":1780282850000,"instants":["2026-06-01T03:00:50.000Z","2026-06-01T03:01:10.000Z","2026-06-01T03:01:15.000Z"]}]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > a skipped occurrence has no instant and never collides
+groups on spring-forward day 0
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > fall-back day: two repeated instants -> 2 groups, anchors 3600000ms apart
+fall-back groups 2 [ 1792888200000, 1792891800000 ]
+
+stdout | test/collisions.test.ts > findCollisions: anchored grouping, cross-line only > one line cannot collide with itself
+self-collision groups 0
+
+ ✓ test/collisions.test.ts (6 tests) 54ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  15:16:28
+   Duration  733ms (transform 222ms, setup 0ms, collect 227ms, tests 54ms, environment 0ms, prepare 93ms)
+
+```
+
+Confirms: the discriminator fixture is a real falsifier. Broken version -> 1 failed, `expected +0 to be 1`. Shipped version -> 78 members correct, 6/6 collisions tests pass. Reverted state was never committed; the revert lived for one command and was restored before this capture was written.
