@@ -12,7 +12,7 @@ import type { CollisionGroup } from './collisions.ts'
 /**
  * The textarea's initial content. Eight lines on purpose: a comment, a
  * `CRON_TZ=` assignment, the DST-anomaly job this project exists for, two
- * jobs at the same instant (`0 3 * * *` ×2, so a future collisions view has
+ * jobs at the same instant (`0 3 * * *` ×2, so the collisions view has
  * something to find), a step/range job, and one malformed line so the error
  * region has something to show without the user typing a mistake first.
  */
@@ -235,7 +235,7 @@ export function renderCollisionsSection(groups: CollisionGroup[], timeZone: stri
     const p = document.createElement('p')
     p.id = 'no-collisions'
     p.className = 'note'
-    p.textContent = 'No jobs land on the same instant in this window.'
+    p.textContent = 'No two crontab lines fire within 60 seconds of each other in this window.'
     section.appendChild(p)
     return section
   }
