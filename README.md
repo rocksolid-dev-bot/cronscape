@@ -114,8 +114,8 @@ and where an independent cron implementation disagrees with cronscape by design.
   leaves it; refresh the page and it's gone.
 - The 60-second collision window is fixed in this version; there is no control to change it.
 - Occurrence generation is capped at 500 per job over a window of 1–365 days
-  (`src/main.ts:21,36-38`) — a job with a huge window and a tight schedule gets truncated, flagged,
-  not silently dropped.
+  (`MAX_OCCURRENCES_PER_JOB` and `windowDays()` in `src/main.ts`) — a job with a huge window and a
+  tight schedule gets truncated, flagged, not silently dropped.
 
 ## Node version note
 
