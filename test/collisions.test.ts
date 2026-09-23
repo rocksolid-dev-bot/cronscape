@@ -131,6 +131,36 @@ describe('findCollisions: anchored grouping, cross-line only', () => {
     expect(groups[1].anchorMs - groups[0].anchorMs).toBe(3600000)
   })
 
+  it('the window argument changes grouping: two lines 120s apart, five windows plus the no-arg default', () => {
+    // line 1: `0 3 * * * /usr/bin/a.sh` -> one instant at 03:00:00.000Z.
+    // line 2: `2 3 * * * /usr/bin/b.sh` -> one instant at 03:02:00.000Z.
+    // 120 seconds apart. If findCollisions ignored its window argument,
+    // every call below would return the same group count — they do not.
+    const crontab = `0 3 * * * /usr/bin/a.sh\n2 3 * * * /usr/bin/b.sh\n`
+    const jobs = jobsOf(crontab, '2026-06-01T00:00:00Z', '2026-06-02T00:00:00Z', 'UTC')
+
+    const counts = {
+      w0: findCollisions(jobs, 0).length,
+      w60: findCollisions(jobs, 60).length,
+      w119: findCollisions(jobs, 119).length,
+      w120: findCollisions(jobs, 120).length,
+      w180: findCollisions(jobs, 180).length,
+      noArg: findCollisions(jobs).length,
+    }
+    console.log('window-argument counts', JSON.stringify(counts))
+
+    expect(counts.w0).toBe(0)
+    expect(counts.w60).toBe(0)
+    expect(counts.w119).toBe(0)
+    expect(counts.w120).toBe(1)
+    expect(counts.w180).toBe(1)
+    expect(counts.noArg).toBe(0)
+
+    const groups180 = findCollisions(jobs, 180)
+    expect(groups180[0].members.length).toBe(2)
+    expect([...new Set(groups180[0].members.map((m) => m.line.line))].sort((a, b) => a - b)).toEqual([1, 2])
+  })
+
   it('one line cannot collide with itself', () => {
     // A single line firing twice 60s apart (0,1 3 * * *) within a 120s
     // window must not be reported: both occurrences share one crontab
