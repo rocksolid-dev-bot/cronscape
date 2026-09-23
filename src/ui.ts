@@ -56,6 +56,10 @@ export function renderShell(): string {
             <label for="window-days">Window (days)</label>
             <input id="window-days" type="number" min="1" max="365" step="1" value="${DEFAULT_WINDOW_DAYS}" />
           </div>
+          <div class="field">
+            <label for="collision-window">Collision window (s)</label>
+            <input id="collision-window" type="number" min="0" max="3600" step="1" value="60" />
+          </div>
         </div>
       </section>
       <section id="error-region" class="errors" aria-live="polite"></section>
@@ -221,7 +225,7 @@ export function collidingLineNumbers(groups: CollisionGroup[]): Set<number> {
  * `timeZone`) and the crontab line numbers involved. Rendered with text in
  * both the collisions and no-collisions case — an empty region reads as a
  * loading state, not as "checked, none found". */
-export function renderCollisionsSection(groups: CollisionGroup[], timeZone: string): HTMLElement {
+export function renderCollisionsSection(groups: CollisionGroup[], timeZone: string, windowSeconds: number): HTMLElement {
   const section = document.createElement('section')
   section.id = 'collisions-region'
   section.className = 'collisions'
@@ -235,7 +239,7 @@ export function renderCollisionsSection(groups: CollisionGroup[], timeZone: stri
     const p = document.createElement('p')
     p.id = 'no-collisions'
     p.className = 'note'
-    p.textContent = 'No two crontab lines fire within 60 seconds of each other in this window.'
+    p.textContent = `No two crontab lines fire within ${windowSeconds} seconds of each other in this window.`
     section.appendChild(p)
     return section
   }

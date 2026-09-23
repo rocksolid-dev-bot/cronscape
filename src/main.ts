@@ -27,6 +27,7 @@ app.innerHTML = renderShell()
 const textarea = document.querySelector<HTMLTextAreaElement>('#crontab-input')!
 const tzSelect = document.querySelector<HTMLSelectElement>('#tz-select')!
 const windowInput = document.querySelector<HTMLInputElement>('#window-days')!
+const collisionWindowInput = document.querySelector<HTMLInputElement>('#collision-window')!
 const errorRegion = document.querySelector<HTMLElement>('#error-region')!
 const jobsRegion = document.querySelector<HTMLElement>('#jobs-region')!
 const collisionsMount = document.querySelector<HTMLElement>('#collisions-mount')!
@@ -35,6 +36,12 @@ function windowDays(): number {
   const parsed = Number.parseInt(windowInput.value, 10)
   if (!Number.isFinite(parsed) || parsed < 1) return 7
   return Math.min(parsed, 365)
+}
+
+function collisionWindowSeconds(): number {
+  const parsed = Number.parseInt(collisionWindowInput.value, 10)
+  if (!Number.isFinite(parsed) || parsed < 0) return 60
+  return Math.min(parsed, 3600)
 }
 
 function recompute(): void {
@@ -65,7 +72,7 @@ function recompute(): void {
     }),
   }))
 
-  const groups = findCollisions(rows)
+  const groups = findCollisions(rows, collisionWindowSeconds())
   const collidingLines = collidingLineNumbers(groups)
 
   const nodes: Node[] = []
@@ -74,11 +81,14 @@ function recompute(): void {
     if (rows.some((row) => row.result.truncated)) nodes.push(renderTruncatedNotice())
   }
   jobsRegion.replaceChildren(...nodes)
-  collisionsMount.replaceChildren(rows.length > 0 ? renderCollisionsSection(groups, timeZone) : document.createDocumentFragment())
+  collisionsMount.replaceChildren(
+    rows.length > 0 ? renderCollisionsSection(groups, timeZone, collisionWindowSeconds()) : document.createDocumentFragment(),
+  )
 }
 
 textarea.addEventListener('input', recompute)
 tzSelect.addEventListener('change', recompute)
 windowInput.addEventListener('input', recompute)
+collisionWindowInput.addEventListener('input', recompute)
 
 recompute()

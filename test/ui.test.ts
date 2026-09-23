@@ -121,7 +121,7 @@ describe('renderCollisionsSection', () => {
     const crontab = parseCrontab(FIXTURE)
     const rows = rowsFor(crontab.lines, new Date('2026-06-01T00:00:00Z'), new Date('2026-06-02T00:00:00Z'), 'Europe/Berlin')
     const groups = findCollisions(rows)
-    const section = renderCollisionsSection(groups, 'Europe/Berlin')
+    const section = renderCollisionsSection(groups, 'Europe/Berlin', 60)
     container.appendChild(section)
 
     expect(section.textContent).toContain('4')
@@ -135,7 +135,7 @@ describe('renderCollisionsSection', () => {
     const groups = findCollisions(rows)
     expect(groups.length).toBe(0)
 
-    const section = renderCollisionsSection(groups, 'UTC')
+    const section = renderCollisionsSection(groups, 'UTC', 60)
     container.appendChild(section)
 
     const empty = section.querySelector('#no-collisions')
