@@ -1,7 +1,7 @@
 # cronscape
 
 Paste a crontab file — not a single expression — and see when every line actually fires: which
-lines collide within 60 seconds of each other, and which occurrences silently vanish or double up
+lines collide within a window you choose (60 seconds by default) of each other, and which occurrences silently vanish or double up
 around a DST transition. Nothing is uploaded; parsing and occurrence generation run entirely in
 the browser.
 
@@ -83,7 +83,7 @@ There is no CLI flag surface; the whole interface is the page at the live URL:
 3. Set a window in days (1–365, default 7) — how far forward occurrences are generated.
 4. The page renders one row per crontab line: its next occurrences in the chosen zone, each one
    badged `skipped`/`repeated` when it falls on a DST transition, plus a collisions section
-   listing every group of occurrences from two or more distinct lines that land within 60 seconds
+   listing every group of occurrences from two or more distinct lines that land within the collision window (60 seconds by default)
    of each other.
 
 Parse errors (bad fields, unsupported Quartz-style 6/7-field lines, out-of-range values) are
@@ -94,8 +94,8 @@ never stops the rest of the file from rendering.
 
 | Concept | Rule |
 |---|---|
-| Collision window | Fixed at **60 seconds**, not exposed as a UI control in this version. Two occurrences from **different** crontab lines within that window of each other are a collision; one line firing twice in its own window is not. |
-| Collision grouping | Anchored, not chained: the earliest ungrouped occurrence anchors a group, and every later occurrence within 60s **of that anchor** joins it. Bounds every group's spread to at most 60s — chaining would let a train of jobs 50s apart each collapse into one group spanning far more than the window. |
+| Collision window | Set in the UI — **Collision window (s)**, default **60**, range **0–3600**. Two occurrences from **different** crontab lines within that window of each other are a collision; one line firing twice in its own window is not. **0** is legal and means same-instant-only. |
+| Collision grouping | Anchored, not chained: the earliest ungrouped occurrence anchors a group, and every later occurrence within the window **of that anchor** joins it. Bounds every group's spread to at most one window — chaining would let a train of jobs 50s apart each collapse into one group spanning far more than the window. |
 | `skipped` wall-clock time | 0 real instants (spring-forward: the local time never happens). Excluded from collision detection — it has no instant to collide with. |
 | `normal` wall-clock time | 1 real instant. |
 | `repeated` wall-clock time | 2 real instants (fall-back: the local time happens twice). **Both** instants are generated and **both** participate in collision detection. |
@@ -112,7 +112,6 @@ and where an independent cron implementation disagrees with cronscape by design.
 - No schedule editing — the crontab text is parsed, not mutated; there's no "add a job" form.
 - No persistence and no accounts — the pasted crontab is parsed in the browser tab and never
   leaves it; refresh the page and it's gone.
-- The 60-second collision window is fixed in this version; there is no control to change it.
 - Occurrence generation is capped at 500 per job over a window of 1–365 days
   (`MAX_OCCURRENCES_PER_JOB` and `windowDays()` in `src/main.ts`) — a job with a huge window and a
   tight schedule gets truncated, flagged, not silently dropped.
