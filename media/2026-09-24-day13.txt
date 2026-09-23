@@ -1,0 +1,84 @@
++ node --version
+v18.19.1
++ echo exit=0
+exit=0
++ npx tsc --noEmit
++ echo exit=0
+exit=0
++ tail -8
++ npx vitest run
+ ✓ test/parse.test.ts (21 tests) 24ms
+ ✓ test/ui.test.ts (7 tests) 95ms
+
+ Test Files  6 passed (6)
+      Tests  79 passed (79)
+   Start at  23:02:21
+   Duration  5.02s (transform 276ms, setup 0ms, collect 436ms, tests 1.63s, environment 678ms, prepare 579ms)
+
++ echo exit=0
+exit=0
++ git log -1 --oneline
+f6bd198 test(collisions): pin the window argument across six values
++ echo exit=0
+exit=0
++ git status --short
+?? media/2026-09-24-day13.txt
++ echo exit=0
+exit=0
++ grep -n 'not exposed as a UI control' README.md
++ echo exit=1
+exit=1
++ grep -n 'is fixed in this version' README.md
++ echo exit=1
+exit=1
++ grep -c 'Collision window (s)' README.md
+1
++ echo exit=0
+exit=0
++ python3 scripts/check_readme_capture.py
+fenced blocks total: 4
+captured-run blocks checked: 2
+lines checked: 32
+unmatched: 0
++ echo exit=0
+exit=0
++ grep -rn 'throw ' src/
++ echo exit=1
+exit=1
++ tail -8
++ npm run build
+transforming...
+✓ 9 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.39 kB │ gzip: 0.27 kB
+dist/assets/index-04HRkU5Y.css   3.98 kB │ gzip: 1.17 kB
+dist/assets/index-IOGoXjK1.js   14.81 kB │ gzip: 5.43 kB
+✓ built in 331ms
++ echo exit=0
+exit=0
+
+=== deploy verification, run on HOST (not the project container), 2026-09-23T23:02:39Z ===
++ bash deploy/run.sh (already executed above this capture; image rebuilt, container replaced)
++ curl -s https://cronscape.rs.m-noel.net/ | grep -o 'assets/index-[A-Za-z0-9]*.js'
+assets/index-IOGoXjK1.js
+exit=0
++ curl -s https://cronscape.rs.m-noel.net/assets/index-IOGoXjK1.js | grep -c 'Collision window'
+1
+exit=0
++ curl -s -o /dev/null -w '%{http_code}' https://cronscape.rs.m-noel.net/assets/index-Drxw0ibp.js
+404
+exit=0
++ curl -s -o /dev/null -w '%{http_code}' https://cronscape.rs.m-noel.net/  (no -k, ssl_verify=0 default)
+200
+exit=0
++ curl -s -o /dev/null -w '%{http_code}' http://cronscape.rs.m-noel.net/
+301
+exit=0
++ docker ps --format '{{.Names}}' | wc -l
+16
+exit=0
++ docker ps --format '{{.Names}}\t{{.Status}}' | grep -w cronscape
+cronscape	Up 47 seconds
+rocksolid-cronscape	Up 5 days
+exit=0
